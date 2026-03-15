@@ -86,11 +86,11 @@ with st.sidebar:
         import chromadb
 
     # delete database folder
-        shutil.rmtree("/tmp/chroma_db", ignore_errors=True)
+        shutil.rmtree(DB_PATH, ignore_errors=True)
 
     # recreate empty database
         chroma = chromadb.PersistentClient(path=DB_PATH)
-        chroma.get_or_create_collection("pdf_docs")
+        collection = chroma.get_or_create_collection("pdf_docs")
 
     # clear session memory
         st.session_state.messages = []
