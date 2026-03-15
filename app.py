@@ -77,8 +77,20 @@ with st.sidebar:
 # Reset database (remove indexed PDFs)
     if st.button("Reset database", use_container_width=True):
         import shutil
+        import chromadb
+
+    # delete database folder
         shutil.rmtree("/tmp/chroma_db", ignore_errors=True)
-        st.success("All indexed PDFs cleared")
+
+    # recreate empty database
+        chroma = chromadb.PersistentClient(path="/tmp/chroma_db")
+        chroma.get_or_create_collection("pdf_docs")
+
+    # clear session memory
+        st.session_state.messages = []
+        st.session_state.history = []
+
+        st.success("Database reset successfully")
         st.rerun()
 
 # ── main area ─────────────────────────────────────────────
