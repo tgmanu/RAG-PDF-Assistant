@@ -1,3 +1,4 @@
+st.cache_data.clear()
 from dotenv import load_dotenv
 load_dotenv()
 import streamlit as st
