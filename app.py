@@ -8,8 +8,14 @@ from rag import query_with_history
 
 st.set_page_config(page_title="DocuMind", page_icon="pdficon.png", layout="wide")
 
-if "messages" not in st.session_state: st.session_state.messages = []
-if "history"  not in st.session_state: st.session_state.history  = []
+import uuid
+if "messages" not in st.session_state: 
+    st.session_state.messages = []
+if "history"  not in st.session_state: 
+    st.session_state.history  = []
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
+DB_PATH = f"/tmp/chroma_db_{st.session_state.session_id}"
 
 # ── sidebar ───────────────────────────────────────────────
 with st.sidebar:
@@ -83,7 +89,7 @@ with st.sidebar:
         shutil.rmtree("/tmp/chroma_db", ignore_errors=True)
 
     # recreate empty database
-        chroma = chromadb.PersistentClient(path="/tmp/chroma_db")
+        chroma = chromadb.PersistentClient(path=DB_PATH)
         chroma.get_or_create_collection("pdf_docs")
 
     # clear session memory
