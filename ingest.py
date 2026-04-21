@@ -10,8 +10,16 @@ from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 load_dotenv()
 
-chroma = chromadb.PersistentClient(path="./chroma_db")
-collection = chroma.get_or_create_collection("pdf_docs")
+
+# ── Always read DB_PATH fresh from env (never cache at module level) ──
+def _db_path():
+    return os.getenv("CHROMA_DB_PATH", "./chroma_db")
+
+
+def get_collection():
+    chroma = chromadb.PersistentClient(path=_db_path())
+    return chroma.get_or_create_collection("pdf_docs")
+
 
 # Load embedding model once (runs locally, no API key needed)
 EMBED_MODEL = SentenceTransformer(
@@ -44,7 +52,7 @@ def detect_strategy(text, num_pages):
     end_words   = set(text[-2000:].lower().split())
     overlap = len(start_words & end_words) / len(start_words | end_words)
     if num_pages > 80:
-        return "recursive"   # agentic too slow for cloud, fallback
+        return "recursive"   # semantic too slow for large docs
     elif num_pages > 15 or overlap < 0.3:
         return "semantic"
     return "recursive"
@@ -65,7 +73,6 @@ def chunk_recursive(text):
 
 
 def chunk_semantic(text):
-    # Use HuggingFace embeddings for SemanticChunker
     hf_embeddings = HuggingFaceEmbeddings(
         model_name="all-MiniLM-L6-v2"
     )
@@ -81,7 +88,7 @@ def chunk_semantic(text):
 
 def get_indexed_files():
     try:
-        all_meta = collection.get(include=["metadatas"])["metadatas"]
+        all_meta = get_collection().get(include=["metadatas"])["metadatas"]
         files = set(m.get("display_name", "") for m in all_meta if m)
         files.discard("")
         return files
@@ -101,12 +108,12 @@ def ingest(pdf_path: str, force: bool = False, display_name: str = None):
         return
 
     if filename in already_indexed and force:
-        existing = collection.get(
+        existing = get_collection().get(
             where={"display_name": filename},
             include=["metadatas"]
         )
         if existing["ids"]:
-            collection.delete(ids=existing["ids"])
+            get_collection().delete(ids=existing["ids"])
             print(f"Cleared old chunks for: {filename}")
 
     text, num_pages = extract_text(pdf_path)
@@ -126,7 +133,7 @@ def ingest(pdf_path: str, force: bool = False, display_name: str = None):
         embedding = embed_text(embed_input)
         chunk_id  = make_chunk_id(filename, i)
 
-        collection.add(
+        get_collection().add(
             ids=[chunk_id],
             embeddings=[embedding],
             documents=[chunk["content"]],
@@ -141,7 +148,7 @@ def ingest(pdf_path: str, force: bool = False, display_name: str = None):
             print(f"  Embedded {i+1}/{len(chunks)} chunks...")
 
     print(f"\nDone! Stored {len(chunks)} chunks using [{strategy}] strategy")
-    print(f"Total chunks in DB: {collection.count()}")
+    print(f"Total chunks in DB: {get_collection().count()}")
 
 
 if __name__ == "__main__":

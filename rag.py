@@ -5,8 +5,16 @@ from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 load_dotenv()
 
-chroma = chromadb.PersistentClient(path="./chroma_db")
-collection = chroma.get_or_create_collection("pdf_docs")
+
+# ── Always read DB_PATH fresh from env (never cache at module level) ──
+def _db_path():
+    return os.getenv("CHROMA_DB_PATH", "./chroma_db")
+
+
+def get_collection():
+    chroma = chromadb.PersistentClient(path=_db_path())
+    return chroma.get_or_create_collection("pdf_docs")
+
 
 # Embedding model — runs locally, no API needed
 EMBED_MODEL = SentenceTransformer(
@@ -28,7 +36,7 @@ def embed(text: str):
 
 def get_indexed_files():
     try:
-        all_meta = collection.get(include=["metadatas"])["metadatas"]
+        all_meta = get_collection().get(include=["metadatas"])["metadatas"]
         files = set(m.get("display_name", "") for m in all_meta if m)
         files.discard("")
         return files
@@ -46,7 +54,7 @@ def retrieve_balanced(question: str, top_k_per_doc: int = 4):
 
     for doc_name in indexed:
         try:
-            results = collection.query(
+            results = get_collection().query(
                 query_embeddings=[q_vec],
                 n_results=top_k_per_doc,
                 include=["documents", "metadatas", "distances"],
@@ -72,7 +80,7 @@ def retrieve_balanced(question: str, top_k_per_doc: int = 4):
 
 def retrieve_single(question: str, top_k: int, filter_name: str):
     q_vec   = embed(question)
-    results = collection.query(
+    results = get_collection().query(
         query_embeddings=[q_vec],
         n_results=top_k,
         include=["documents", "metadatas", "distances"],
