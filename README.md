@@ -117,4 +117,4 @@ GROQ_API_KEY = "your_groq_api_key_here"
 
 ## Live Demo
 
-[RAG-PDF-Assistant on Streamlit Cloud](https://your-app-url.streamlit.app/)
+[RAG-PDF-Assistant on Streamlit Cloud](https://rag-pdfassistant.streamlit.app/)
